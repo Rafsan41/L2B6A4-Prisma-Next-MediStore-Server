@@ -1,0 +1,280 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE // Can login and use all features
+  BANNED // Cannot login or access any features (admin action)
+  PENDING // For sellers awaiting admin approval
+  SUSPENDED // Temporarily restricted (optional, good for violations)
+}
+
+// Optional: For tracking seller-specific status
+
+enum SellerStatus {
+  APPROVED // Can sell medicines
+  PENDING // Awaiting admin approval
+  REJECTED // Registration rejected
+  SUSPENDED // Temporarily banned from selling
+}
+
+enum OrderStatus {
+  PLACED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH_ON_DELIVERY
+}
+
+// model User {
+//   id        String   @id @default(uuid())
+//   name      String
+//   email     String   @unique
+//   password  String
+//   role      Role
+//   isBanned  Boolean  @default(false)
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   // NEW FIELDS from README requirements
+//   phone      String? // Customer/seller contact number
+//   address    String? // Shipping address for customers
+//   city       String? // For better order management
+//   postalCode String? // For accurate delivery
+//   avatar     String? // Profile picture URL
+
+//   medicines    Medicine[]    @relation("SellerMedicines") // Sellers' products
+//   orders       Order[] // Orders placed by customer
+//   reviews      Review[] // Reviews written by customer
+//   sellerOrders SellerOrder[] // Seller specific - orders that contain their medicines
+
+//   @@map("users")
+// }
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  image       String? // Category image URL
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  medicines Medicine[]
+
+  @@map("categories")
+}
+
+model Medicine {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String   @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  image       String? // Main image URL
+  images      String[] // Array of additional image URLs (for product gallery)
+
+  // Medicine-specific fields
+  manufacturer         String
+  dosage               String? // e.g., "500mg", "10ml"
+  form                 String? // e.g., "Tablet", "Capsule", "Syrup", "Cream"
+  prescriptionRequired Boolean @default(false)
+  isActive             Boolean @default(true) // Soft delete / visibility toggle
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sellerId   String
+  // seller     User     @relation("SellerMedicines", fields: [sellerId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  orderItems OrderItem[]
+  reviews    Review[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([name])
+  @@index([prescriptionRequired])
+  @@map("medicines")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique
+  status      OrderStatus
+  total       Decimal     @db.Decimal(10, 2)
+
+  // Shipping information (denormalized for order history)
+  shippingAddress    String        @db.Text
+  shippingCity       String
+  shippingPostalCode String?
+  paymentMethod      PaymentMethod @default(CASH_ON_DELIVERY)
+  notes              String?       @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  customerId String
+  // customer   User   @relation(fields: [customerId], references: [id])
+
+  items        OrderItem[]
+  sellerOrders SellerOrder[]
+
+  // ✅ ADD THIS LINE - Missing relation to reviews
+  reviews Review[] // Add this to fix the error
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id])
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
+
+  @@unique([orderId, medicineId])
+  @@map("order_items")
+}
+
+model SellerOrder {
+  id        String      @id @default(uuid())
+  status    OrderStatus @default(PLACED)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  orderId  String
+  order    Order  @relation(fields: [orderId], references: [id])
+  sellerId String
+  // seller   User   @relation(fields: [sellerId], references: [id])
+
+  @@unique([orderId, sellerId])
+  @@index([sellerId])
+  @@index([status])
+  @@map("seller_orders")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int // 1-5 stars
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  parentId  String?
+  parent    Review?  @relation("ReviewReplies", fields: [parentId], references: [id])
+  replies   Review[] @relation("ReviewReplies")
+
+  // Relations
+  customerId String
+  // customer   User     @relation(fields: [customerId], references: [id])
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
+  orderId    String? // Optional: link to specific order for verification
+  order      Order?   @relation(fields: [orderId], references: [id])
+
+  // One review per customer per medicine
+  @@unique([customerId, medicineId])
+  @@index([medicineId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  role   String? @default("USER")
+  phones String?
+  status String? @default("ACTIVE")
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
