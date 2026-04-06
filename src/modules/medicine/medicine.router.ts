@@ -1,8 +1,8 @@
 
-import expess, { Router } from "express";
+import express, { Router } from "express";
 import { medicineController } from "./medicine.controller";
 
-const router = expess.Router();
+const router = express.Router();
 
 router.post(
     "/medicines", medicineController.createMedicine
@@ -17,8 +17,5 @@ router.get("/medicines/:id", (req, res) => {
     res.send("Get medicine details");
 })
 
-router.get("/categories", (req, res) => {
-    res.send("Get all categories");
-})
 
 export const medicineRouter: Router = router;
