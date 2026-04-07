@@ -14,17 +14,21 @@ const createCategory = async (req: Request, res: Response) => {
             message: "Category created successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
+        if (error.code === "P2002") {
+            res.status(409).json({ success: false, message: "Category name or slug already exists" });
+            return;
+        }
         res.status(500).json({
             success: false,
             message: "Failed to create category",
-            error: error,
+            error: error.message,
         });
     }
 };
 
-const getAllCategories = async (req: Request, res: Response) => {
+const getAllCategories = async (_req: Request, res: Response) => {
     try {
         const result = await categoryService.getAllCategories();
         res.status(200).json({
@@ -32,12 +36,12 @@ const getAllCategories = async (req: Request, res: Response) => {
             message: "Categories fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch categories",
-            error: error,
+            error: error.message,
         });
     }
 };

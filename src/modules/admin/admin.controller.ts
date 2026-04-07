@@ -4,7 +4,7 @@ import { UserStatus } from "../../../generated/prisma/client";
 
 // ── Users ──────────────────────────────────────────────────────────────────
 
-const getAllUsers = async (req: Request, res: Response) => {
+const getAllUsers = async (_req: Request, res: Response) => {
     try {
         const result = await adminService.getAllUsers();
         res.status(200).json({
@@ -12,19 +12,19 @@ const getAllUsers = async (req: Request, res: Response) => {
             message: "Users fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch users",
-            error: error,
+            error: error.message,
         });
     }
 };
 
 const updateUserStatus = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { status } = req.body;
 
         if (!status) {
@@ -44,7 +44,7 @@ const updateUserStatus = async (req: Request, res: Response) => {
             data: result,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
         res.status(400).json({
             success: false,
             message: error.message || "Failed to update user status",
@@ -54,7 +54,7 @@ const updateUserStatus = async (req: Request, res: Response) => {
 
 // ── Medicines ──────────────────────────────────────────────────────────────
 
-const getAllMedicines = async (req: Request, res: Response) => {
+const getAllMedicines = async (_req: Request, res: Response) => {
     try {
         const result = await adminService.getAllMedicines();
         res.status(200).json({
@@ -62,19 +62,19 @@ const getAllMedicines = async (req: Request, res: Response) => {
             message: "Medicines fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch medicines",
-            error: error,
+            error: error.message,
         });
     }
 };
 
 // ── Orders ─────────────────────────────────────────────────────────────────
 
-const getAllOrders = async (req: Request, res: Response) => {
+const getAllOrders = async (_req: Request, res: Response) => {
     try {
         const result = await adminService.getAllOrders();
         res.status(200).json({
@@ -82,12 +82,12 @@ const getAllOrders = async (req: Request, res: Response) => {
             message: "Orders fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch orders",
-            error: error,
+            error: error.message,
         });
     }
 };
@@ -96,7 +96,14 @@ const getAllOrders = async (req: Request, res: Response) => {
 
 const updateCategory = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
+        const { name, slug, description, image } = req.body;
+
+        if (!name && !slug && !description && !image) {
+            res.status(400).json({ success: false, message: "Provide at least one field to update: name, slug, description, image" });
+            return;
+        }
+
         const result = await adminService.updateCategory(id, req.body);
         res.status(200).json({
             success: true,
@@ -104,7 +111,11 @@ const updateCategory = async (req: Request, res: Response) => {
             data: result,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
+        if (error.code === "P2002") {
+            res.status(409).json({ success: false, message: "Category name or slug already exists" });
+            return;
+        }
         res.status(400).json({
             success: false,
             message: error.message || "Failed to update category",
@@ -114,14 +125,14 @@ const updateCategory = async (req: Request, res: Response) => {
 
 const deleteCategory = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const result = await adminService.deleteCategory(id);
         res.status(200).json({
             success: true,
             message: result.message,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
         res.status(400).json({
             success: false,
             message: error.message || "Failed to delete category",

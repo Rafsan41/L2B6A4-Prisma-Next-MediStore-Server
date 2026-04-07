@@ -3,12 +3,24 @@ import { orderService } from "./order.service";
 
 const createOrder = async (req: Request, res: Response) => {
     try {
-        const { items, shippingAddress, shippingCity, shippingPostalCode, paymentMethod, notes } = req.body;
+        const { items, shippingAddress, shippingCity } = req.body;
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             res.status(400).json({ success: false, message: "Missing required field: items (non-empty array)" });
             return;
         }
+
+        for (const item of items) {
+            if (!item.medicineId || typeof item.medicineId !== "string") {
+                res.status(400).json({ success: false, message: "Each item must have a valid medicineId" });
+                return;
+            }
+            if (!item.quantity || typeof item.quantity !== "number" || item.quantity < 1) {
+                res.status(400).json({ success: false, message: "Each item must have a quantity of at least 1" });
+                return;
+            }
+        }
+
         if (!shippingAddress || !shippingCity) {
             res.status(400).json({ success: false, message: "Missing required fields: shippingAddress, shippingCity" });
             return;
@@ -21,7 +33,7 @@ const createOrder = async (req: Request, res: Response) => {
             data: result,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
         res.status(400).json({
             success: false,
             message: error.message || "Failed to place order",
@@ -37,12 +49,12 @@ const getMyOrders = async (req: Request, res: Response) => {
             message: "Orders fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch orders",
-            error: error,
+            error: error.message,
         });
     }
 };
@@ -50,7 +62,7 @@ const getMyOrders = async (req: Request, res: Response) => {
 const getOrderById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const result = await orderService.getOrderById(id, req.user!.id);
+        const result = await orderService.getOrderById(id as string, req.user!.id);
 
         if (!result) {
             res.status(404).json({ success: false, message: "Order not found" });
@@ -62,12 +74,12 @@ const getOrderById = async (req: Request, res: Response) => {
             message: "Order fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch order",
-            error: error,
+            error: error.message,
         });
     }
 };
@@ -75,13 +87,13 @@ const getOrderById = async (req: Request, res: Response) => {
 const cancelOrder = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const result = await orderService.cancelOrder(id, req.user!.id);
+        const result = await orderService.cancelOrder(id as string, req.user!.id);
         res.status(200).json({
             success: true,
             message: result.message,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
         res.status(400).json({
             success: false,
             message: error.message || "Failed to cancel order",

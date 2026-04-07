@@ -26,7 +26,11 @@ const createReview = async (req: Request, res: Response) => {
             data: result,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
+        if (error.code === "P2002") {
+            res.status(409).json({ success: false, message: "You have already reviewed this medicine" });
+            return;
+        }
         res.status(400).json({
             success: false,
             message: error.message || "Failed to submit review",
@@ -43,12 +47,12 @@ const getMedicineReviews = async (req: Request, res: Response) => {
             message: "Reviews fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch reviews",
-            error: error,
+            error: error.message,
         });
     }
 };

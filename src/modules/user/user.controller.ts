@@ -15,12 +15,12 @@ const getProfile = async (req: Request, res: Response) => {
             message: "Profile fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch profile",
-            error: error,
+            error: error.message,
         });
     }
 };
@@ -43,12 +43,12 @@ const updateProfile = async (req: Request, res: Response) => {
             message: "Profile updated successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to update profile",
-            error: error,
+            error: error.message,
         });
     }
 };

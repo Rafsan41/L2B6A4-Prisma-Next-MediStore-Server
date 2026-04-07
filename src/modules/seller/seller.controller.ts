@@ -15,12 +15,16 @@ const createMedicine = async (req: Request, res: Response) => {
             message: "Medicine created successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
+        if (error.code === "P2002") {
+            res.status(409).json({ success: false, message: "A medicine with this slug already exists" });
+            return;
+        }
         res.status(500).json({
             success: false,
             message: "Failed to create medicine",
-            error: error,
+            error: error.message,
         });
     }
 };
@@ -28,6 +32,13 @@ const createMedicine = async (req: Request, res: Response) => {
 const updateMedicine = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+        const { name, slug, description, price, stock, image, images, manufacturer, dosage, form, categoryId } = req.body;
+
+        if (!name && !slug && !description && !price && stock === undefined && !image && !images && !manufacturer && !dosage && !form && !categoryId) {
+            res.status(400).json({ success: false, message: "Provide at least one field to update" });
+            return;
+        }
+
         const result = await sellerService.updateMedicine(id as string, req.user!.id, req.body);
         res.status(200).json({
             success: true,
@@ -35,7 +46,11 @@ const updateMedicine = async (req: Request, res: Response) => {
             data: result,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
+        if (error.code === "P2002") {
+            res.status(409).json({ success: false, message: "A medicine with this slug already exists" });
+            return;
+        }
         res.status(400).json({
             success: false,
             message: error.message || "Failed to update medicine",
@@ -52,7 +67,7 @@ const deleteMedicine = async (req: Request, res: Response) => {
             message: result.message,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
         res.status(400).json({
             success: false,
             message: error.message || "Failed to delete medicine",
@@ -68,12 +83,12 @@ const getSellerOrders = async (req: Request, res: Response) => {
             message: "Orders fetched successfully",
             data: result,
         });
-    } catch (error) {
-        console.log(error);
+    } catch (error: any) {
+        console.error(error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch orders",
-            error: error,
+            error: error.message,
         });
     }
 };
@@ -100,7 +115,7 @@ const updateOrderStatus = async (req: Request, res: Response) => {
             data: result,
         });
     } catch (error: any) {
-        console.log(error);
+        console.error(error);
         res.status(400).json({
             success: false,
             message: error.message || "Failed to update order status",
