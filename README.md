@@ -46,11 +46,11 @@ Each module strictly follows **MVC pattern**:
 - `*.router.ts` — Route definitions + auth middleware
 
 ---
-Frontend Repo     : https://github.com/your-username/skillbridge-frontend
-Backend Repo      : https://github.com/your-username/skillbridge-backend
-Frontend Live     : https://skillbridge.vercel.app
-Backend Live      : https://skillbridge-api.vercel.app
-Demo Video        : https://drive.google.com/file/d/xxx/view
+- Frontend Repo     : https://github.com/your-username/skillbridge-frontend
+- Backend Repo      : https://github.com/your-username/skillbridge-backend
+- Frontend Live     : https://skillbridge.vercel.app
+- Backend Live      : https://skillbridge-api.vercel.app
+- Demo Video        : https://drive.google.com/file/d/xxx/view
 
 - Admin Email       : rafsundipto116@gmail.com
 - Admin Password    : rafsan1234
