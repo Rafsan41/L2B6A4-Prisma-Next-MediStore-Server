@@ -6,6 +6,21 @@ A RESTful API backend for MediStore — a full-stack OTC (over-the-counter) medi
 
 ---
 
+## Live Links
+
+- **Backend Live**: https://medistores.vercel.app
+- **Backend Repo**: https://github.com/Rafsan41/L2B6A4-Prisma-Next-MediStore-Server
+
+### Test Credentials
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@medistores.com | admin123456 |
+| Seller | rafsundipto116@gmail.com | rafsan1234 |
+| Customer | zayan@gmail.com | zayan1234 |
+
+---
+
 ## Tech Stack
 
 | Technology | Purpose |
@@ -13,10 +28,11 @@ A RESTful API backend for MediStore — a full-stack OTC (over-the-counter) medi
 | **Express 5** | HTTP server & routing |
 | **TypeScript 6** | Type safety |
 | **Prisma 7** | ORM & database migrations |
-| **PostgreSQL** | Relational database |
+| **PostgreSQL** | Relational database (Neon DB) |
 | **better-auth 1.5** | Authentication (email/password + Google OAuth) |
 | **Nodemailer** | Email verification |
 | **CORS** | Cross-origin requests |
+| **Vercel** | Serverless deployment |
 
 ---
 
@@ -25,49 +41,43 @@ A RESTful API backend for MediStore — a full-stack OTC (over-the-counter) medi
 ```
 src/
 ├── lib/
-│   ├── auth.ts               # better-auth config (email, Google OAuth, email verification)
-│   ├── authMiddleware.ts     # requireAuth() middleware + UserRole enum
-│   └── prisma.ts             # Prisma client instance
+│   ├── auth.ts                # better-auth config (email, Google OAuth, email verification)
+│   ├── authMiddleware.ts      # requireAuth() middleware + UserRole enum
+│   └── prisma.ts              # Prisma client instance
+├── middlewares/
+│   ├── globalErrorHandler.ts  # Centralized error handling middleware
+│   └── notFound.ts            # 404 handler for unknown routes
 ├── modules/
-│   ├── category/             # Category CRUD
-│   ├── medicine/             # Public medicine listing & detail
-│   ├── order/                # Customer order management
-│   ├── user/                 # Customer profile
-│   ├── review/               # Medicine reviews
-│   ├── seller/               # Seller medicine & order management
-│   └── admin/                # Admin panel (users, medicines, orders, categories)
-├── app.ts                    # Express app setup & router registration
-└── server.ts                 # Server entry point
+│   ├── admin/                 # Admin panel (users, medicines, orders, categories, stats)
+│   ├── category/              # Category CRUD
+│   ├── medicine/              # Public medicine listing & detail
+│   ├── order/                 # Customer order management
+│   ├── review/                # Medicine reviews
+│   ├── seller/                # Seller medicine, order & dashboard management
+│   ├── sellerReview/          # Seller reviews with reply support
+│   └── user/                  # Customer profile & dashboard
+├── routes/
+│   └── index.ts               # Central route aggregator
+├── scripts/
+│   └── seedAdmin.ts           # Seed admin user script
+├── app.ts                     # Express app setup & middleware registration
+└── server.ts                  # Server entry point
 ```
 
 Each module strictly follows **MVC pattern**:
 - `*.service.ts` — Prisma/business logic only
-- `*.controller.ts` — Request/response handling
+- `*.controller.ts` — Request/response handling (uses `next(error)` for centralized error handling)
 - `*.router.ts` — Route definitions + auth middleware
 
 ---
-- Frontend Repo     : https://github.com/your-username/skillbridge-frontend
-- Backend Repo      : https://github.com/your-username/skillbridge-backend
-- Frontend Live     : https://skillbridge.vercel.app
-- Backend Live      : https://skillbridge-api.vercel.app
-- Demo Video        : https://drive.google.com/file/d/xxx/view
-
-- Admin Email       : rafsundipto116@gmail.com
-- Admin Password    : rafsan1234
-
-- Seller Email      : rjd223341@22gmail.com
-- Seller Password   : mitila1234
-
-- Customer Email    : orangemonika@deltajohnsons.com
-- Customer Password : password123 
 
 ## Getting Started
 
 ### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
-cd Prisma-Next-MediStore-Server
+git clone https://github.com/Rafsan41/L2B6A4-Prisma-Next-MediStore-Server.git
+cd L2B6A4-Prisma-Next-MediStore-Server
 npm install
 ```
 
@@ -103,6 +113,9 @@ npx prisma migrate dev
 
 # Generate Prisma client
 npx prisma generate
+
+# Seed admin user
+npm run seed:admin
 ```
 
 ### 4. Run Development Server
@@ -119,17 +132,15 @@ Server runs at `http://localhost:5000`
 
 | Role | Description |
 |------|-------------|
-| **CUSTOMER** | Browse medicines, place orders, leave reviews, manage profile |
-| **SELLER** | Add/edit/remove medicines, view & update their orders |
-| **ADMIN** | Full platform oversight — manage users, medicines, orders, categories |
-
-> Admin accounts must be seeded directly in the database.
+| **CUSTOMER** | Browse medicines, place/cancel orders, leave reviews, manage profile, view dashboard stats |
+| **SELLER** | Add/edit/remove medicines, manage orders, view dashboard & customer stats |
+| **ADMIN** | Full platform oversight — manage users, medicines, orders, categories, view statistics |
 
 ---
 
 ## API Reference
 
-Base URL: `http://localhost:5000/api`
+Base URL: `https://medistores.vercel.app/api`
 
 ---
 
@@ -164,6 +175,7 @@ Base URL: `http://localhost:5000/api`
 | GET | `/api/medicines` | Get all medicines (with filters) |
 | GET | `/api/medicines/:id` | Get medicine detail + reviews |
 | GET | `/api/medicines/:id/reviews` | Get reviews for a medicine |
+| GET | `/api/seller-reviews/:sellerId` | Get reviews for a seller |
 
 **Medicine query filters:**
 ```
@@ -215,9 +227,10 @@ Base URL: `http://localhost:5000/api`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/medicines/:id/reviews` | Leave a review (one per medicine) |
+| POST | `/api/medicines/:id/reviews` | Leave a medicine review (one per medicine) |
+| POST | `/api/seller-reviews` | Leave a seller review (with reply support) |
 
-**Review body:**
+**Medicine review body:**
 ```json
 {
   "rating": 5,
@@ -225,6 +238,23 @@ Base URL: `http://localhost:5000/api`
   "orderId": "uuid"
 }
 ```
+
+**Seller review body:**
+```json
+{
+  "sellerId": "uuid",
+  "rating": 4,
+  "comment": "Fast delivery!",
+  "parentId": "uuid (optional, for replies)"
+}
+```
+
+#### Dashboard
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/customer/dashboard-stats` | Get customer dashboard statistics |
+| GET | `/api/customer/seller-stats` | Get stats about sellers customer bought from |
 
 ---
 
@@ -264,14 +294,21 @@ Base URL: `http://localhost:5000/api`
 
 **Order status flow:**
 ```
-PLACED → PROCESSING → SHIPPED → DELIVERED
-PLACED → CANCELLED
+PLACED -> PROCESSING -> SHIPPED -> DELIVERED
+PLACED -> CANCELLED
 ```
 
 **Update status body:**
 ```json
 { "status": "PROCESSING" }
 ```
+
+#### Dashboard
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/seller/dashboard-stats` | Get seller dashboard statistics |
+| GET | `/api/seller/customer-stats` | Get stats about seller's customers |
 
 ---
 
@@ -284,9 +321,9 @@ PLACED → CANCELLED
 | PATCH | `/api/admin/users/:id` | Update user status (ACTIVE, BANNED, SUSPENDED) |
 | GET | `/api/admin/medicines` | Get all medicines (incl. inactive) |
 | GET | `/api/admin/orders` | Get all orders |
-| POST | `/api/categories` | Create category |
 | PUT | `/api/admin/categories/:id` | Update category |
 | DELETE | `/api/admin/categories/:id` | Delete category |
+| GET | `/api/admin/statistics` | Get admin dashboard statistics |
 
 **Update user status body:**
 ```json
@@ -306,14 +343,15 @@ PLACED → CANCELLED
 | **OrderItem** | orderId, medicineId, quantity, unitPrice, subtotal |
 | **SellerOrder** | orderId, sellerId, status |
 | **Review** | id, rating, comment, customerId, medicineId, orderId |
+| **SellerReview** | id, rating, comment, customerId, sellerId, parentId |
 
 ---
 
 ## Error Handling
 
-All responses follow a consistent shape:
+All errors are handled centrally through `globalErrorHandler` middleware using `next(error)` pattern. No individual controller manages its own error responses.
 
-**Success:**
+**Success response:**
 ```json
 {
   "success": true,
@@ -322,7 +360,7 @@ All responses follow a consistent shape:
 }
 ```
 
-**Error:**
+**Error response:**
 ```json
 {
   "success": false,
@@ -331,16 +369,17 @@ All responses follow a consistent shape:
 }
 ```
 
-| HTTP Code | Meaning |
-|-----------|---------|
-| 200 | OK |
-| 201 | Created |
-| 400 | Bad request / business logic error |
-| 401 | Unauthorized (not logged in / email not verified) |
-| 403 | Forbidden (wrong role) |
-| 404 | Not found |
-| 409 | Conflict (duplicate slug, already reviewed, etc.) |
-| 500 | Internal server error |
+| HTTP Code | Meaning | Error Type |
+|-----------|---------|------------|
+| 200 | OK | — |
+| 201 | Created | — |
+| 400 | Bad request | `PrismaClientValidationError`, JSON SyntaxError, invalid input |
+| 401 | Unauthorized | Not logged in / email not verified |
+| 403 | Forbidden | Wrong role / ownership violation |
+| 404 | Not found | `PrismaClientKnownRequestError` (P2025), resource not found, inactive |
+| 409 | Conflict | `PrismaClientKnownRequestError` (P2002), status transition, insufficient stock |
+| 500 | Internal server error | `PrismaClientUnknownRequestError`, unexpected errors |
+| 503 | Service unavailable | `PrismaClientInitializationError` (DB connection failed) |
 
 ---
 
