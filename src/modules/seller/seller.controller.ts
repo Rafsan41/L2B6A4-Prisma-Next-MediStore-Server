@@ -123,10 +123,32 @@ const updateOrderStatus = async (req: Request, res: Response) => {
     }
 };
 
+const getDashboardStats = async (req: Request, res: Response) => {
+    try {
+        const sellerId = req.user!.id;
+        const stats = await sellerService.getSellerDashboardStats(sellerId);
+        res.status(200).json({ success: true, data: stats });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const getCustomerStats = async (req: Request, res: Response) => {
+    try {
+        const sellerId = req.user!.id;
+        const stats = await sellerService.getSellerCustomerStats(sellerId);
+        res.status(200).json({ success: true, data: stats });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export const sellerController = {
     createMedicine,
     updateMedicine,
     deleteMedicine,
     getSellerOrders,
     updateOrderStatus,
+    getDashboardStats,
+    getCustomerStats,
 };

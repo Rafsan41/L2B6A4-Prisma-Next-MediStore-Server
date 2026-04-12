@@ -14,4 +14,8 @@ router.get("/seller/orders", requireAuth(UserRole.SELLER), sellerController.getS
 
 router.patch("/seller/orders/:id", requireAuth(UserRole.SELLER), sellerController.updateOrderStatus);
 
+router.get("/seller/dashboard-stats", requireAuth(UserRole.SELLER), sellerController.getDashboardStats);
+
+router.get("/seller/customer-stats", requireAuth(UserRole.SELLER), sellerController.getCustomerStats);
+
 export const sellerRouter: Router = router;
