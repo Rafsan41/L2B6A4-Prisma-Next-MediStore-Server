@@ -3,8 +3,8 @@ import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
 import router from "./routes/index.js";
-import notFound from "./middlewares/notFound.js";
 import errorHandler from "./middlewares/globalErrorHandler.js";
+import { notFound } from "./middlewares/notFound.js";
 
 const app: Application = express();
 
