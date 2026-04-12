@@ -204,6 +204,8 @@ model User {
   orders        Order[]
   sellerOrders  SellerOrder[]
   reviews       Review[]
+  sellerReviewsGiven    SellerReview[] @relation("CustomerSellerReviews")
+  sellerReviewsReceived SellerReview[] @relation("SellerReviews")
 
   @@unique([email])
   @@map("user")
@@ -243,6 +245,29 @@ model Account {
 
   @@index([userId])
   @@map("account")
+}
+
+model SellerReview {
+  id        String   @id @default(uuid())
+  rating    Int // 1-5 stars
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerId String
+  customer   User   @relation("CustomerSellerReviews", fields: [customerId], references: [id])
+  sellerId   String
+  seller     User   @relation("SellerReviews", fields: [sellerId], references: [id])
+
+  // Reply support
+  parentId String?
+  parent   SellerReview?  @relation("SellerReviewReplies", fields: [parentId], references: [id])
+  replies  SellerReview[] @relation("SellerReviewReplies")
+
+  @@unique([customerId, sellerId])
+  @@index([sellerId])
+  @@index([rating])
+  @@map("seller_reviews")
 }
 
 model Verification {

@@ -6,6 +6,7 @@ import { userRouter } from "./modules/user/user.router.js";
 import { reviewRouter } from "./modules/review/review.router.js";
 import { sellerRouter } from "./modules/seller/seller.router.js";
 import { adminRouter } from "./modules/admin/admin.router.js";
+import { sellerReviewRouter } from "./modules/sellerReview/sellerReview.router.js";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
 import cors from "cors"
@@ -33,6 +34,8 @@ app.use("/api", reviewRouter);
 app.use("/api", sellerRouter);
 
 app.use("/api", adminRouter);
+
+app.use("/api", sellerReviewRouter);
 
 app.get("/", (_req, res) => {
     res.send("MediStore Server is running");
