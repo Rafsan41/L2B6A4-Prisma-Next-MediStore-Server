@@ -1,45 +1,27 @@
 import express, { Application } from "express";
-import { medicineRouter } from "./modules/medicine/medicine.router.js";
-import { categoryRouter } from "./modules/category/category.router.js";
-import { orderRouter } from "./modules/order/order.router.js";
-import { userRouter } from "./modules/user/user.router.js";
-import { reviewRouter } from "./modules/review/review.router.js";
-import { sellerRouter } from "./modules/seller/seller.router.js";
-import { adminRouter } from "./modules/admin/admin.router.js";
-import { sellerReviewRouter } from "./modules/sellerReview/sellerReview.router.js";
+import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
-import cors from "cors"
+import router from "./routes/index.js";
+import notFound from "./middlewares/notFound.js";
 import errorHandler from "./middlewares/globalErrorHandler.js";
+
 const app: Application = express();
 
-app.use(express.json());
-
+// ── Middleware ─────────────────────────────────────────────────────────────
 app.use(cors({
     origin: process.env.APP_URL || "http://localhost:3000",
-    credentials: true
-}))
+    credentials: true,
+}));
 app.use(express.json());
+
+// ── Auth ───────────────────────────────────────────────────────────────────
 app.all('/api/auth/*splat', toNodeHandler(auth));
 
-app.use("/api", categoryRouter);
+// ── API Routes ─────────────────────────────────────────────────────────────
+app.use("/api", router);
 
-app.use("/api", medicineRouter);
-
-app.use("/api", orderRouter);
-
-app.use("/api", userRouter);
-
-app.use("/api", reviewRouter);
-
-app.use("/api", sellerRouter);
-
-app.use("/api", adminRouter);
-
-app.use("/api", sellerReviewRouter);
-
-app.use(errorHandler)
-
+// ── Root ───────────────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
     res.send(`
     <!DOCTYPE html>
@@ -177,6 +159,10 @@ app.get("/", (_req, res) => {
     </body>
     </html>
     `);
-})
+});
+
+// ── Error Handling ─────────────────────────────────────────────────────────
+app.use(notFound);
+app.use(errorHandler);
 
 export default app;
