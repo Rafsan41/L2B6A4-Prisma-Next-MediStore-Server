@@ -1,99 +1,97 @@
 /**
- * Seeds 3 demo accounts for MediStore:
+ * Seeds 3 demo accounts for MediStore directly via Prisma (no server needed):
  *   admin@medistore.com    / admin1234
  *   seller@medistore.com   / seller1234
  *   customer@medistore.com / customer1234
  *
- * Run with the server already started on port 5000:
+ * Run from anywhere (server does NOT need to be running):
  *   npx tsx src/scripts/seedDemoUsers.ts
  */
 
-import { prisma } from "../lib/prisma.js";
-import { auth } from "../lib/auth.js";
-
-const BASE_URL = "http://localhost:5000";
-const ORIGIN   = "http://localhost:3000";
+import "dotenv/config"
+import { prisma } from "../lib/prisma.js"
+import { auth }   from "../lib/auth.js"
 
 const DEMO_USERS = [
   { name: "Admin Demo",    email: "admin@medistore.com",    password: "admin1234",    role: "ADMIN"    },
   { name: "Seller Demo",   email: "seller@medistore.com",   password: "seller1234",   role: "SELLER"   },
   { name: "Customer Demo", email: "customer@medistore.com", password: "customer1234", role: "CUSTOMER" },
-];
+]
 
 async function seedDemoUsers() {
-  console.log("🌱 Seeding demo users…\n");
+  console.log("🌱 Seeding demo users directly into DB…\n")
 
-  // Get Better Auth's internal context for password hashing
-  const ctx = await (auth as any).$context;
+  const ctx = await (auth as any).$context
 
-  for (const user of DEMO_USERS) {
-    const existing = await prisma.user.findUnique({ where: { email: user.email } });
+  for (const u of DEMO_USERS) {
+    const hashedPassword = await ctx.password.hash(u.password)
+
+    const existing = await prisma.user.findUnique({ where: { email: u.email } })
 
     if (existing) {
-      // Hash the password using Better Auth's own hash function (correct format)
-      const hashedPassword = await ctx.password.hash(user.password);
-
-      // Update the credential account's password directly — no user delete needed
+      // 1. Update password on existing credential account
       const updated = await prisma.account.updateMany({
         where: { userId: existing.id, providerId: "credential" },
-        data: { password: hashedPassword },
-      });
+        data:  { password: hashedPassword },
+      })
 
+      // 2. If no credential account, create one directly
       if (updated.count === 0) {
-        // No credential account exists yet — create one via sign-up API
-        const res = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Origin: ORIGIN },
-          body: JSON.stringify({ name: user.name, email: user.email, password: user.password }),
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          console.error(`❌ Could not create credential account for ${user.email}: ${txt}`);
-        }
+        await prisma.account.create({
+          data: {
+            id:           crypto.randomUUID(),
+            userId:       existing.id,
+            accountId:    existing.id,
+            providerId:   "credential",
+            password:     hashedPassword,
+            createdAt:    new Date(),
+            updatedAt:    new Date(),
+          },
+        })
       }
 
-      // Force-update role, status, emailVerified
+      // 3. Force role / status / verified
       await prisma.user.update({
-        where: { email: user.email },
+        where: { email: u.email },
+        data:  { role: u.role as any, status: "ACTIVE", emailVerified: true },
+      })
+
+      console.log(`✅ Reset   ${u.role.padEnd(8)} ${u.email}`)
+    } else {
+      // Brand-new user — create user + account in one go
+      const userId = crypto.randomUUID()
+
+      await prisma.user.create({
         data: {
-          role: user.role as any,
-          status: "ACTIVE",
+          id:            userId,
+          name:          u.name,
+          email:         u.email,
+          role:          u.role as any,
+          status:        "ACTIVE",
           emailVerified: true,
+          createdAt:     new Date(),
+          updatedAt:     new Date(),
         },
-      });
+      })
 
-      console.log(`✅ Reset ${user.role}: ${user.email} / ${user.password}`);
-      continue;
+      await prisma.account.create({
+        data: {
+          id:         crypto.randomUUID(),
+          userId:     userId,
+          accountId:  userId,
+          providerId: "credential",
+          password:   hashedPassword,
+          createdAt:  new Date(),
+          updatedAt:  new Date(),
+        },
+      })
+
+      console.log(`✅ Created ${u.role.padEnd(8)} ${u.email}`)
     }
-
-    // New user — register via auth API
-    const res = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Origin: ORIGIN },
-      body: JSON.stringify({ name: user.name, email: user.email, password: user.password }),
-    });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error(`❌ Failed to create ${user.role}: ${res.status} — ${txt}`);
-      continue;
-    }
-
-    // Update role + status + emailVerified in DB directly
-    await prisma.user.update({
-      where: { email: user.email },
-      data: {
-        role: user.role as any,
-        status: "ACTIVE",
-        emailVerified: true,
-      },
-    });
-
-    console.log(`✅ Created ${user.role}: ${user.email} / ${user.password}`);
   }
 
-  console.log("\n🎉 Done! Demo accounts ready.");
-  await prisma.$disconnect();
+  console.log("\n🎉 Done! Demo accounts ready.")
+  await prisma.$disconnect()
 }
 
-seedDemoUsers().catch((e) => { console.error(e); process.exit(1); });
+seedDemoUsers().catch((e) => { console.error(e); process.exit(1) })
